@@ -31,8 +31,8 @@ export default function FontLoader({ children }: FontLoaderProps) {
   });
 
   if (!fontsLoaded) {
-    // Return an empty view to hold layout while fonts load
-    return <View className="flex-1 bg-canvas" />;
+    // Match native splash background so there's no blank flash between native → JS splash
+    return <View style={{ flex: 1, backgroundColor: '#14100c' }} />;
   }
 
   return <>{children}</>;

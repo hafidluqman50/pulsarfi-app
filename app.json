@@ -1,28 +1,36 @@
 {
-  "expo": {
-    "name": "pulsarfi-app",
-    "slug": "pulsarfi-app",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "ios": {
-      "supportsTablet": true
-    },
-    "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
-      },
-      "predictiveBackGestureEnabled": false
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
-    "plugins": [
-      "expo-font"
-    ]
-  }
+	"expo": {
+		"name": "PulsarFi",
+		"slug": "pulsarfi-app",
+		"scheme": "pulsarfi",
+		"version": "1.0.0",
+		"orientation": "portrait",
+		"icon": "./assets/icon.png",
+		"splash": {
+			"image": "./assets/splash.png",
+			"resizeMode": "contain",
+			"backgroundColor": "#14100c"
+		},
+		"userInterfaceStyle": "light",
+		"ios": {
+			"supportsTablet": true
+		},
+		"android": {
+			"adaptiveIcon": {
+				"foregroundImage": "./assets/android-icon-foreground.png",
+				"backgroundColor": "#14100c"
+			},
+			"predictiveBackGestureEnabled": false,
+			"package": "com.pulsarhorizon.pulsarfi_app"
+		},
+		"web": {
+			"favicon": "./assets/favicon.png"
+		},
+		"plugins": ["expo-font"],
+		"extra": {
+			"eas": {
+				"projectId": "2841ec23-21c9-4d50-943b-5fda963961be"
+			}
+		}
+	}
 }

@@ -7,18 +7,24 @@ import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
 export type Tab = 'markets' | 'swap' | 'portfolio' | 'activity' | 'custodian';
 
-export function BottomNav({ state, descriptors, navigation }: BottomTabBarProps) {
+const USER_TABS: { id: Tab; label: string; icon: IconName }[] = [
+  { id: 'markets', label: 'Markets', icon: 'globe' },
+  { id: 'swap', label: 'Swap', icon: 'swap' },
+  { id: 'portfolio', label: 'Holdings', icon: 'wallet' },
+  { id: 'activity', label: 'Activity', icon: 'spark' },
+];
+
+const CUSTODIAN_TABS: { id: Tab; label: string; icon: IconName }[] = [
+  { id: 'markets', label: 'Markets', icon: 'globe' },
+  { id: 'custodian', label: 'Vault', icon: 'terminal' },
+];
+
+export function BottomNav({ state, descriptors, navigation, role }: BottomTabBarProps & { role?: 'user' | 'custodian' }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const pressedRouteRef = React.useRef<string | null>(null);
 
-  const items: { id: Tab; label: string; icon: IconName }[] = [
-    { id: 'markets', label: 'Markets', icon: 'globe' },
-    { id: 'swap', label: 'Swap', icon: 'swap' },
-    { id: 'portfolio', label: 'Holdings', icon: 'wallet' },
-    { id: 'activity', label: 'Activity', icon: 'spark' },
-    { id: 'custodian', label: 'Vault', icon: 'terminal' },
-  ];
+  const items = role === 'custodian' ? CUSTODIAN_TABS : USER_TABS;
 
   return (
     <View style={{ backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.hairline }}>

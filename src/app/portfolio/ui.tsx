@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { View, ScrollView, Pressable, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader, Eyebrow, Mono, Icon, Card, Donut, AreaChart, Segmented, TokenAvatar, fonts } from '@/components/CoreUI';
-import { fmtAmt, fmtUSD, fmtPct } from '@/lib/mockData';
+import { fmtAmt, fmtIDRX, fmtPct } from '@/lib/mockData';
 import { useColors } from '@/lib/theme';
 import { makeStyles } from './style';
 
@@ -23,7 +23,7 @@ export function PortfolioUI({
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   return (
-    <View style={[styles.container, { paddingTop: Math.max(insets.top, 28) }]}>
+    <View style={styles.container}>
       <ScreenHeader
         title="Holdings"
         eyebrow="Your tokenized portfolio"
@@ -39,10 +39,10 @@ export function PortfolioUI({
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.pad}>
-          <Text style={styles.heroAmount}>{fmtUSD(totalPortfolioValue)}</Text>
+          <Text style={styles.heroAmount}>{fmtIDRX(totalPortfolioValue)}</Text>
           <View style={styles.heroRow}>
             <Text style={[styles.heroChange, { color: dailyChange >= 0 ? colors.positive : colors.merah }]}>
-              {dailyChange >= 0 ? '▲' : '▼'} {fmtUSD(Math.abs(dailyChange))} ({fmtPct(dailyChangePercent)})
+              {dailyChange >= 0 ? '▲' : '▼'} {fmtIDRX(Math.abs(dailyChange))} ({fmtPct(dailyChangePercent)})
             </Text>
             <Text style={styles.heroRange}>{selectedRange}</Text>
           </View>
@@ -53,7 +53,7 @@ export function PortfolioUI({
             data={chartData}
             range={selectedRange}
             height={150}
-            valueFormatter={(val) => `$${(val / 1000).toFixed(1)}k`}
+            valueFormatter={(val) => val >= 1e6 ? `${(val / 1e6).toFixed(1)}M` : `${(val / 1e3).toFixed(0)}K`}
           />
         </View>
 
@@ -69,7 +69,7 @@ export function PortfolioUI({
           <Card style={styles.statCard} pad={14}>
             <Eyebrow style={styles.statTitle}>Total P&L</Eyebrow>
             <Mono style={[styles.statValue, { color: totalProfitLoss >= 0 ? colors.positive : colors.merah }]}>
-              {totalProfitLoss >= 0 ? '+' : ''}{fmtUSD(totalProfitLoss)}
+              {totalProfitLoss >= 0 ? '+' : ''}{fmtIDRX(totalProfitLoss)}
             </Mono>
             <Text style={[styles.statSub, { color: totalProfitLoss >= 0 ? colors.positive : colors.merah }]}>
               {fmtPct(totalProfitLossPercent)}
@@ -123,13 +123,13 @@ export function PortfolioUI({
               <TokenAvatar ticker={holding.tk} size={38} />
               <View style={styles.posFlex}>
                 <Text style={styles.posTicker}>{holding.tk}</Text>
-                <Mono style={styles.posSub}>{fmtAmt(holding.qty)} · {fmtUSD(holding.t.price, { min: 4, max: 4 })}</Mono>
+                <Mono style={styles.posSub}>{fmtAmt(holding.qty)} · {fmtIDRX(holding.t.price)}</Mono>
               </View>
               <View style={styles.posRight}>
-                <Mono style={styles.posValue}>{fmtUSD(holding.value)}</Mono>
+                <Mono style={styles.posValue}>{fmtIDRX(holding.value)}</Mono>
                 {!holding.isStable && (
                   <Mono style={[styles.posPnl, { color: holding.pnl >= 0 ? colors.positive : colors.merah }]}>
-                    {holding.pnl >= 0 ? '+' : ''}{fmtPct(holding.pnlPct)}
+                    {fmtPct(holding.pnlPct)}
                   </Mono>
                 )}
               </View>

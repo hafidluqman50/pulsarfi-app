@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -74,7 +75,11 @@ export type IconName =
   | 'globe'
   | 'terminal'
   | 'moon'
-  | 'sun';
+  | 'sun'
+  | 'clock'
+  | 'shield'
+  | 'external'
+  | 'power';
 
 export function Icon({
   name,
@@ -110,6 +115,10 @@ export function Icon({
         {name === 'terminal' && <><Rect {...p} x="3" y="4" width="18" height="16" /><Path {...p} d="M7 9l3 3-3 3M12 16h5" /></>}
         {name === 'moon' && <Path {...p} d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />}
         {name === 'sun' && <><Circle {...p} cx="12" cy="12" r="5" /><Path {...p} d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></>}
+        {name === 'clock' && <><Circle {...p} cx="12" cy="12" r="9" /><Path {...p} d="M12 7v5l3 2" /></>}
+        {name === 'shield' && <Path {...p} d="M12 3l7 3v5c0 4.2-2.7 7.8-7 10-4.3-2.2-7-5.8-7-10V6z" />}
+        {name === 'external' && <><Path {...p} d="M14 4h6v6" /><Path {...p} d="M20 4l-9 9" /><Path {...p} d="M10 5H5v14h14v-5" /></>}
+        {name === 'power' && <><Path {...p} d="M12 3v9" /><Path {...p} d="M7 6.5a8 8 0 1 0 10 0" /></>}
       </Svg>
     </View>
   );
@@ -235,20 +244,60 @@ export function Button({
   );
 }
 
+const TOKEN_LOGOS_ASSETS: Record<string, ReturnType<typeof require>> = {
+  BBCA: require('../../assets/logos/BBCA.png'),
+  BMRI: require('../../assets/logos/BMRI.png'),
+  BBRI: require('../../assets/logos/BBRI.png'),
+  BDMN: require('../../assets/logos/BDMN.png'),
+  PTRO: require('../../assets/logos/PTRO.png'),
+  BRPT: require('../../assets/logos/BRPT.png'),
+  ENRG: require('../../assets/logos/ENRG.png'),
+  BUMI: require('../../assets/logos/BUMI.png'),
+  IDRX: require('../../assets/logos/IDRX.png'),
+};
+
+/**
+ * Resolve logo dari ticker dengan beberapa format:
+ * 1. Exact: IDRX → IDRX
+ * 2. Strip prefix 'p': pBUMI → BUMI
+ * 3. Strip suffix 'P': BUMIP → BUMI
+ * 4. Strip prefix 'p' + suffix 'P': pBUMIP → BUMI
+ */
+function resolveLogoKey(ticker: string): string | null {
+  if (!ticker) return null;
+  const t = ticker.toUpperCase();
+  if (TOKEN_LOGOS_ASSETS[t]) return t;
+  // strip leading 'P' prefix (pBUMI → BUMI)
+  const noP = t.startsWith('P') && t.length > 1 ? t.slice(1) : null;
+  if (noP && TOKEN_LOGOS_ASSETS[noP]) return noP;
+  // strip trailing 'P' (BUMIP → BUMI)
+  const noSuffix = t.endsWith('P') && t.length > 1 ? t.slice(0, -1) : null;
+  if (noSuffix && TOKEN_LOGOS_ASSETS[noSuffix]) return noSuffix;
+  // strip both (pBUMIP → BUMI)
+  if (noP) {
+    const noSuffixP = noP.endsWith('P') && noP.length > 1 ? noP.slice(0, -1) : null;
+    if (noSuffixP && TOKEN_LOGOS_ASSETS[noSuffixP]) return noSuffixP;
+  }
+  return null;
+}
+
 export function TokenAvatar({ ticker, size = 40 }: { ticker: string; size?: number }) {
   const colors = useColors();
-  const s = TOKEN_STYLE[ticker] ?? { fill: colors.ink, glyph: ticker?.[1] ?? '•' };
+  const logoKey = resolveLogoKey(ticker);
+  const logo = logoKey ? TOKEN_LOGOS_ASSETS[logoKey] : undefined;
+  const s = TOKEN_STYLE[ticker] ?? TOKEN_STYLE[`p${ticker}`] ?? { fill: colors.ink, glyph: ticker?.[1]?.toUpperCase() ?? '•' };
+  const radius = Math.max(0, size * 0.25);
+
+  if (logo) {
+    return (
+      <View style={{ width: size, height: size, borderRadius: radius, overflow: 'hidden' }}>
+        <Image source={logo} style={{ width: size, height: size }} resizeMode="cover" />
+      </View>
+    );
+  }
+
   return (
-    <View
-      style={{
-        width: size,
-        height: size,
-        backgroundColor: s.fill,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: Math.max(0, size * 0.25),
-      }}
-    >
+    <View style={{ width: size, height: size, backgroundColor: s.fill, alignItems: 'center', justifyContent: 'center', borderRadius: radius }}>
       <Text style={{ color: '#fff', fontFamily: fonts.displayMed, fontSize: size * 0.48 }}>{s.glyph}</Text>
     </View>
   );
@@ -336,7 +385,7 @@ export function SearchBox({ value, onChange }: { value: string; onChange: (v: st
       <TextInput
         value={value}
         onChangeText={onChange}
-        placeholder="Search pBUMI, Telkom..."
+        placeholder="Search BUMIP, Telkom..."
         placeholderTextColor={colors.body}
         style={{ flex: 1, fontFamily: fonts.sans, color: colors.ink, fontSize: 14, padding: 0 }}
       />

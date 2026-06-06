@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { View, ScrollView, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader, Eyebrow, Mono, Icon, Card, Button, fonts } from '@/components/CoreUI';
-import { fmtUSD, fmtNum } from '@/lib/mockData';
+import { fmtIDRX, fmtNum } from '@/lib/mockData';
 import { useColors } from '@/lib/theme';
 import { makeStyles } from './style';
 
@@ -19,7 +19,7 @@ export function CustodianUI({
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   return (
-    <View style={[styles.container, { paddingTop: Math.max(insets.top, 28) }]}>
+    <View style={styles.container}>
       <ScreenHeader
         title="Vault"
         eyebrow="3-of-5 multisig · KSEI reserve"
@@ -40,7 +40,7 @@ export function CustodianUI({
         <View style={{ paddingTop: 2 }}>
           <Card style={styles.reserveCard} pad={16}>
             <Eyebrow style={{ color: 'rgba(255,255,255,.55)' }}>Custodied reserve</Eyebrow>
-            <Text style={styles.reserveValue}>{fmtUSD(reserveValue, { min: 0, max: 0 })}</Text>
+            <Text style={styles.reserveValue}>{fmtIDRX(reserveValue, { min: 0, max: 0 })}</Text>
             <View style={styles.statsRow}>
               <View>
                 <Mono style={[styles.statVal, { color: '#fff' }]}>8</Mono>

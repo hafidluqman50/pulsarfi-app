@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { CustodianUI } from './ui';
-import { PSTOCKS } from '@/lib/mockData';
+import { useStocks, useReserves } from '@/http/hooks/stocks';
 
 const CUSTODIANS_LIST = [
   { id: "c1", name: "You", short: "ME", you: true },
@@ -31,7 +31,18 @@ function generateSeedProposals(): Proposal[] {
 
 export default function CustodianPage() {
   const [proposals, setProposals] = useState(generateSeedProposals);
-  const totalReserveValue = PSTOCKS.reduce((sum, token) => sum + (token.supply || 0) * token.price, 0);
+  const stocksQuery = useStocks();
+  const reservesQuery = useReserves();
+
+  const totalReserveValue = useMemo(() => {
+    if (!reservesQuery.data || !stocksQuery.data) return 0;
+    
+    return stocksQuery.data.reduce((sum, token) => {
+      const reserve = reservesQuery.data.find(r => r.stock.ticker === token.ticker);
+      const supply = reserve ? Number(reserve.on_chain_supply) / 1e18 : 0;
+      return sum + (supply * token.price);
+    }, 0);
+  }, [stocksQuery.data, reservesQuery.data]);
 
   const handleSignProposal = (proposalId: string, shouldExecute: boolean) => {
     setProposals(previousProposals => previousProposals.map(proposal => {
