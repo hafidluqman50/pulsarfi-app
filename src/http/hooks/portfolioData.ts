@@ -23,7 +23,7 @@ export function usePortfolioData(address: string | undefined): PortfolioData {
 			ticker: stock.ticker,
 			name: stock.stock_name,
 			sector: stock.sector ?? undefined,
-			price: stock.pool_price || stock.price,
+			price: stock.price,
 			change24h: stock.change_24h,
 			ipo: stock.idx_ticker,
 			isStable: false,
@@ -55,7 +55,8 @@ export function usePortfolioData(address: string | undefined): PortfolioData {
 		() =>
 			Object.keys(balances).reduce((sum, ticker) => {
 				const token = allTokens.find((t) => t.ticker === ticker);
-				return sum + (balances[ticker] || 0) * (token?.price || 0);
+				const price = token?.isStable ? token.price : (token?.price || 0) * 100;
+				return sum + (balances[ticker] || 0) * price;
 			}, 0),
 		[balances, allTokens],
 	);

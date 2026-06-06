@@ -6,8 +6,6 @@ type CostLot = {
 	cost: number;
 };
 
-const PORTFOLIO_LOT_SIZE = 100;
-
 function rawAmount(raw: string, decimals: number): number {
 	try {
 		const valueStr = String(raw).replace(/[^0-9]/g, "") || "0";
@@ -69,10 +67,7 @@ export function buildCostBasis(
 	return Object.fromEntries(
 		Object.entries(lots)
 			.filter(([, lot]) => lot.qty > 0)
-			.map(([ticker, lot]) => [
-				ticker,
-				(lot.cost / lot.qty) * PORTFOLIO_LOT_SIZE,
-			]),
+			.map(([ticker, lot]) => [ticker, lot.cost / lot.qty]),
 	);
 }
 
