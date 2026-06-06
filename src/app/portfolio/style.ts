@@ -29,7 +29,7 @@ export const makeStyles = (c: Colors) => StyleSheet.create({
   legendPct: { marginLeft: 'auto', color: c.body, fontSize: 12 },
   posTitle: { paddingHorizontal: 18, paddingTop: 16, paddingBottom: 4 },
   posList: { marginHorizontal: 18, marginBottom: 16, backgroundColor: c.surface, borderWidth: 1, borderColor: c.hairline, borderRadius: 20, overflow: 'hidden' },
-  posItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 },
+  posItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 12 },
   posFlex: { flex: 1 },
   posTicker: { fontFamily: fonts.sansSemi, color: c.ink, fontSize: 14.5 },
   posSub: { color: c.body, fontSize: 12 },

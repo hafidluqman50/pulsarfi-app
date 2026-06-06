@@ -2,9 +2,18 @@ import React, { useMemo } from 'react';
 import { Modal, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheet, Button, Card, Eyebrow, Icon, Mono, ScreenHeader, TokenAvatar } from '@/components/CoreUI';
-import { fmtAmt, fmtUSD, Token } from '@/lib/mockData';
+import { fmtAmt, fmtIDRX, Token } from '@/lib/mockData';
 import { useColors } from '@/lib/theme';
 import { makeStyles } from './style';
+
+
+import { BottomSheetModal, BottomSheetScrollView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+
+export type SwapRefs = {
+  pickerSheetRef: React.RefObject<BottomSheetModal | null>;
+  reviewSheetRef: React.RefObject<BottomSheetModal | null>;
+  settingsSheetRef: React.RefObject<BottomSheetModal | null>;
+};
 
 export type SwapSlot = 'pay' | 'recv';
 
@@ -12,7 +21,7 @@ export type SwapViewModel = {
   payToken: string;
   receiveToken: string;
   payTokenDetails: Token;
-  receiveTokenDetails: Token;
+  receiveTokenDetails: Token | undefined;
   amount: string;
   pickingToken: SwapSlot | null;
   tokenSearch: string;
@@ -52,13 +61,13 @@ export type SwapActions = {
   toggleNightMode: () => void;
 };
 
-export function SwapUI({ vm, actions }: { vm: SwapViewModel; actions: SwapActions }) {
+export function SwapUI({ vm, actions, refs }: { vm: SwapViewModel; actions: SwapActions; refs: SwapRefs }) {
   const insets = useSafeAreaInsets();
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   return (
-    <View style={[styles.container, { paddingTop: Math.max(insets.top, 28) }]}>
+    <View style={styles.container}>
       <ScreenHeader
         title="Swap"
         eyebrow="Trade pStocks · 0.30% pool fee"
@@ -88,7 +97,7 @@ export function SwapUI({ vm, actions }: { vm: SwapViewModel; actions: SwapAction
             }
             balanceDanger={vm.isInsufficientBalance}
             onPick={() => actions.openPicker('pay')}
-            footerLeft={vm.usdValueOfAmount > 0 ? fmtUSD(vm.usdValueOfAmount) : '$0.00'}
+            footerLeft={vm.usdValueOfAmount > 0 ? fmtIDRX(vm.usdValueOfAmount) : '0 IDRX'}
             footerRight={
               <View style={styles.percentageButtonsContainer}>
                 {[{ label: '25%', value: 0.25 }, { label: '50%', value: 0.5 }, { label: 'MAX', value: 1 }].map((pct) => (
@@ -112,7 +121,7 @@ export function SwapUI({ vm, actions }: { vm: SwapViewModel; actions: SwapAction
               </Mono>
             }
             onPick={() => actions.openPicker('recv')}
-            footerLeft={vm.expectedOutput > 0 ? fmtUSD(vm.expectedOutput * vm.receiveTokenDetails.price) : '$0.00'}
+            footerLeft={vm.expectedOutput > 0 && vm.receiveTokenDetails ? fmtIDRX(vm.expectedOutput * vm.receiveTokenDetails.price) : '0 IDRX'}
             colors={colors}
             styles={styles}
           />
@@ -125,8 +134,8 @@ export function SwapUI({ vm, actions }: { vm: SwapViewModel; actions: SwapAction
         </View>
 
         <View style={styles.detailsContainer}>
-          <DetailRow k="Rate" v={`1 ${vm.payToken} = ${fmtAmt(vm.payTokenDetails.price / vm.receiveTokenDetails.price)} ${vm.receiveToken}`} mono styles={styles} />
-          <DetailRow k="Pool fee (0.30%)" v={vm.amountNumber > 0 ? `-${fmtUSD(vm.usdValueOfAmount * vm.swapFeePercentage)}` : '-'} mono styles={styles} />
+          <DetailRow k="Rate" v={vm.receiveTokenDetails ? `1 ${vm.payToken} = ${fmtAmt(vm.payTokenDetails.price / vm.receiveTokenDetails.price)} ${vm.receiveToken}` : '—'} mono styles={styles} />
+          <DetailRow k="Pool fee (0.30%)" v={vm.amountNumber > 0 ? `-${fmtIDRX(vm.usdValueOfAmount * vm.swapFeePercentage)}` : '-'} mono styles={styles} />
           <DetailRow k="Min. received" v={`${fmtAmt(vm.minimumReceivedAmount)} ${vm.receiveToken}`} mono styles={styles} />
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Slippage tolerance</Text>
@@ -155,9 +164,9 @@ export function SwapUI({ vm, actions }: { vm: SwapViewModel; actions: SwapAction
         </Button>
       </View>
 
-      <TokenSelectSheet vm={vm} actions={actions} colors={colors} styles={styles} />
-      <ReviewSheet vm={vm} actions={actions} colors={colors} styles={styles} />
-      <SettingsSheet vm={vm} actions={actions} colors={colors} styles={styles} />
+      <TokenSelectSheet vm={vm} actions={actions} colors={colors} styles={styles} sheetRef={refs.pickerSheetRef} />
+      <ReviewSheet vm={vm} actions={actions} colors={colors} styles={styles} sheetRef={refs.reviewSheetRef} />
+      <SettingsSheet vm={vm} actions={actions} colors={colors} styles={styles} sheetRef={refs.settingsSheetRef} />
     </View>
   );
 }
@@ -218,7 +227,7 @@ function DetailRow({ k, v, mono, styles }: { k: string; v: string; mono?: boolea
   );
 }
 
-function TokenSelectSheet({ vm, actions, colors, styles }: { vm: SwapViewModel; actions: SwapActions; colors: any; styles: any }) {
+function TokenSelectSheet({ vm, actions, colors, styles, sheetRef }: { vm: SwapViewModel; actions: SwapActions; colors: any; styles: any; sheetRef: React.RefObject<BottomSheetModal | null> }) {
   const renderItem = (token: Token) => {
     const balance = vm.userBalances[token.ticker] || 0;
     return (
@@ -235,14 +244,16 @@ function TokenSelectSheet({ vm, actions, colors, styles }: { vm: SwapViewModel; 
     );
   };
 
+  const renderBackdrop = React.useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} opacity={0.46} pressBehavior="close" />
+    ),
+    []
+  );
+
   return (
-    <Modal visible={!!vm.pickingToken} transparent animationType="fade" statusBarTranslucent onRequestClose={actions.closePicker}>
-      <View style={styles.modalRoot}>
-        <Pressable onPress={actions.closePicker} style={styles.modalBackdrop} />
-        <View style={styles.modalSheet}>
-          <View style={styles.modalHandleWrap}>
-            <View style={styles.modalHandle} />
-          </View>
+    <BottomSheetModal ref={sheetRef} enableDynamicSizing={false} snapPoints={['88%']} backdropComponent={renderBackdrop} handleIndicatorStyle={{ backgroundColor: colors.hairlineStrong, width: 40, height: 4.5 }} backgroundStyle={{ backgroundColor: colors.surface, borderRadius: 26 }} enablePanDownToClose keyboardBehavior="interactive" keyboardBlurBehavior="restore">
+
           <View style={styles.modalTitleRow}>
             <Text style={styles.modalTitle}>{vm.pickerTitle}</Text>
             <Pressable onPress={actions.closePicker} style={styles.modalClose}>
@@ -260,22 +271,29 @@ function TokenSelectSheet({ vm, actions, colors, styles }: { vm: SwapViewModel; 
               style={styles.tokenSearchInput}
             />
           </View>
-          <ScrollView bounces={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.modalContent}>
+          <BottomSheetScrollView bounces={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.modalContent}>
             <Eyebrow style={styles.sheetEyebrowFirst}>{vm.pickerTitle === 'Select stablecoin' ? 'Stablecoins' : 'Tokenized equities'}</Eyebrow>
             {vm.pickerTokens.map(renderItem)}
             {vm.pickerTokens.length === 0 && (
               <Text style={styles.emptySearchText}>No token found</Text>
             )}
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
+          </BottomSheetScrollView>
+    </BottomSheetModal>
   );
 }
 
-function ReviewSheet({ vm, actions, colors, styles }: { vm: SwapViewModel; actions: SwapActions; colors: any; styles: any }) {
+function ReviewSheet({ vm, actions, colors, styles, sheetRef }: { vm: SwapViewModel; actions: SwapActions; colors: any; styles: any; sheetRef: React.RefObject<BottomSheetModal | null> }) {
+  const renderBackdrop = React.useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} opacity={0.46} pressBehavior="close" />
+    ),
+    []
+  );
+
   return (
-    <BottomSheet visible={vm.isReviewing} onClose={actions.closeReview} title={vm.swapPhase === 'success' ? undefined : 'Review swap'}>
+    <BottomSheetModal ref={sheetRef} enableDynamicSizing={true} maxDynamicContentSize={800} backdropComponent={renderBackdrop} handleIndicatorStyle={{ backgroundColor: colors.hairlineStrong, width: 40, height: 4.5 }} backgroundStyle={{ backgroundColor: colors.surface, borderRadius: 26 }} enablePanDownToClose>
+      <BottomSheetScrollView bounces={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+        {vm.swapPhase !== 'success' && <Text style={[styles.modalTitle, { textAlign: 'center', marginBottom: 16 }]}>Review swap</Text>}
       {vm.swapPhase === 'success' ? (
         <View style={styles.successContainer}>
           <View style={styles.successIconBox}>
@@ -302,11 +320,11 @@ function ReviewSheet({ vm, actions, colors, styles }: { vm: SwapViewModel; actio
           </View>
           <View style={styles.reviewDetailsCard}>
             {[
-              ['Rate', `1 ${vm.payToken} = ${fmtAmt(vm.payTokenDetails.price / vm.receiveTokenDetails.price)} ${vm.receiveToken}`],
-              ['Value', fmtUSD(vm.usdValueOfAmount)],
-              ['Pool fee', `-${fmtUSD(vm.usdValueOfAmount * vm.swapFeePercentage)}`],
+              ['Rate', vm.receiveTokenDetails ? `1 ${vm.payToken} = ${fmtAmt(vm.payTokenDetails.price / vm.receiveTokenDetails.price)} ${vm.receiveToken}` : '—'],
+              ['Value', fmtIDRX(vm.usdValueOfAmount)],
+              ['Pool fee', `-${fmtIDRX(vm.usdValueOfAmount * vm.swapFeePercentage)}`],
               ['Min. received', `${fmtAmt(vm.minimumReceivedAmount)} ${vm.receiveToken}`],
-              ['Network', 'Arbitrum · ~$0.01'],
+              ['Network', 'Arbitrum · ~0,01 IDRX'],
             ].map(([label, value], index, arr) => (
               <View key={label} style={[styles.reviewDetailRow, index < arr.length - 1 && styles.reviewDetailRowBorder]}>
                 <Text style={styles.reviewDetailLabel}>{label}</Text>
@@ -321,7 +339,8 @@ function ReviewSheet({ vm, actions, colors, styles }: { vm: SwapViewModel; actio
           </View>
         </View>
       )}
-    </BottomSheet>
+    </BottomSheetScrollView>
+    </BottomSheetModal>
   );
 }
 
@@ -335,15 +354,17 @@ function ReviewToken({ ticker, amount, styles }: { ticker: string; amount: strin
   );
 }
 
-function SettingsSheet({ vm, actions, colors, styles }: { vm: SwapViewModel; actions: SwapActions; colors: any; styles: any }) {
+function SettingsSheet({ vm, actions, colors, styles, sheetRef }: { vm: SwapViewModel; actions: SwapActions; colors: any; styles: any; sheetRef: React.RefObject<BottomSheetModal | null> }) {
+  const renderBackdrop = React.useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} opacity={0.46} pressBehavior="close" />
+    ),
+    []
+  );
+
   return (
-    <Modal visible={vm.isSettingsOpen} transparent animationType="fade" statusBarTranslucent onRequestClose={actions.closeSettings}>
-      <View style={styles.modalRoot}>
-        <Pressable onPress={actions.closeSettings} style={styles.modalBackdrop} />
-        <View style={styles.modalSheet}>
-          <View style={styles.modalHandleWrap}>
-            <View style={styles.modalHandle} />
-          </View>
+    <BottomSheetModal ref={sheetRef} enableDynamicSizing={true} backdropComponent={renderBackdrop} handleIndicatorStyle={{ backgroundColor: colors.hairlineStrong, width: 40, height: 4.5 }} backgroundStyle={{ backgroundColor: colors.surface, borderRadius: 26 }} enablePanDownToClose>
+
           <View style={styles.modalTitleRow}>
             <Text style={styles.modalTitle}>Settings</Text>
             <Pressable onPress={actions.closeSettings} style={styles.modalClose}>
@@ -361,8 +382,6 @@ function SettingsSheet({ vm, actions, colors, styles }: { vm: SwapViewModel; act
               </View>
             </Pressable>
           </View>
-        </View>
-      </View>
-    </Modal>
+    </BottomSheetModal>
   );
 }
