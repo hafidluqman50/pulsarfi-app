@@ -44,7 +44,7 @@ function ThemedApp() {
 										</View>
 									</View>
 								</FontLoader>
-								<Toaster />
+								<Toaster theme={isDark ? "dark" : "light"} />
 							</BottomSheetModalProvider>
 						</QueryClientProvider>
 					</WagmiProvider>
