@@ -1,10 +1,24 @@
-import React, { useMemo } from 'react';
-import { View, ScrollView, Text } from 'react-native';
+import React, { useEffect, useMemo } from 'react';
+import { View, ScrollView, Text, RefreshControl } from 'react-native';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader, Eyebrow, Mono, Icon, Card, Button, fonts } from '@/components/CoreUI';
 import { fmtIDRX, fmtNum } from '@/lib/mockData';
 import { useColors } from '@/lib/theme';
 import { makeStyles } from './style';
+
+function SkeletonPulse({ style }: { style: any }) {
+  const opacity = useSharedValue(0.4);
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withTiming(1, { duration: 800, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true
+    );
+  }, [opacity]);
+  const anim = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  return <Animated.View style={[style, anim]} />;
+}
 
 export function CustodianUI({
   reserveValue,
@@ -13,6 +27,10 @@ export function CustodianUI({
   pendingProposals,
   executedProposals,
   onSignProposal,
+  isRequestsLoading,
+  isMembersLoading,
+  refreshing,
+  onRefresh,
 }: any) {
   const insets = useSafeAreaInsets();
   const colors = useColors();
@@ -36,6 +54,14 @@ export function CustodianUI({
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing || false}
+            onRefresh={onRefresh}
+            tintColor={colors.merah}
+            colors={[colors.merah]}
+          />
+        }
       >
         <View style={{ paddingTop: 2 }}>
           <Card style={styles.reserveCard} pad={16}>
@@ -50,10 +76,6 @@ export function CustodianUI({
                 <Mono style={[styles.statVal, { color: '#fff' }]}>5</Mono>
                 <Eyebrow style={styles.statLabel}>Custodians</Eyebrow>
               </View>
-              <View>
-                <Mono style={[styles.statVal, { color: colors.merah }]}>100%</Mono>
-                <Eyebrow style={styles.statLabel}>Collateral</Eyebrow>
-              </View>
             </View>
           </Card>
         </View>
@@ -61,14 +83,31 @@ export function CustodianUI({
         <View style={{ paddingTop: 16, paddingBottom: 6 }}>
           <Eyebrow style={{ paddingHorizontal: 18, marginBottom: 10 }}>Signing custodians</Eyebrow>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.custodiansScroll}>
-            {custodiansList.map((custodian: any) => (
-              <View key={custodian.id} style={[styles.custodianPill, { borderColor: custodian.you ? colors.merah : colors.hairline }]}>
-                <View style={[styles.custodianDot, { backgroundColor: custodian.you ? colors.merah : colors.ink }]}>
-                  <Text style={{ fontFamily: fonts.sansSemi, fontSize: 10, color: '#fff' }}>{custodian.short}</Text>
+            {isMembersLoading ? (
+              <>
+                <View style={[styles.custodianPill, { borderColor: colors.hairline, opacity: 0.5 }]}>
+                  <SkeletonPulse style={[styles.custodianDot, { backgroundColor: colors.surface2 }]} />
+                  <SkeletonPulse style={{ width: 60, height: 10, backgroundColor: colors.surface2, borderRadius: 4 }} />
                 </View>
-                <Text style={{ fontFamily: fonts.sansSemi, color: colors.ink, fontSize: 12.5 }}>{custodian.name}</Text>
-              </View>
-            ))}
+                <View style={[styles.custodianPill, { borderColor: colors.hairline, opacity: 0.5 }]}>
+                  <SkeletonPulse style={[styles.custodianDot, { backgroundColor: colors.surface2 }]} />
+                  <SkeletonPulse style={{ width: 80, height: 10, backgroundColor: colors.surface2, borderRadius: 4 }} />
+                </View>
+                <View style={[styles.custodianPill, { borderColor: colors.hairline, opacity: 0.5 }]}>
+                  <SkeletonPulse style={[styles.custodianDot, { backgroundColor: colors.surface2 }]} />
+                  <SkeletonPulse style={{ width: 70, height: 10, backgroundColor: colors.surface2, borderRadius: 4 }} />
+                </View>
+              </>
+            ) : (
+              custodiansList.map((custodian: any) => (
+                <View key={custodian.id} style={[styles.custodianPill, { borderColor: custodian.you ? colors.merah : colors.hairline }]}>
+                  <View style={[styles.custodianDot, { backgroundColor: custodian.you ? colors.merah : colors.ink }]}>
+                    <Text style={{ fontFamily: fonts.sansSemi, fontSize: 10, color: custodian.you ? '#fff' : colors.canvas }}>{custodian.short}</Text>
+                  </View>
+                  <Text style={{ fontFamily: fonts.sansSemi, color: colors.ink, fontSize: 12.5 }}>{custodian.name}</Text>
+                </View>
+              ))
+            )}
           </ScrollView>
         </View>
 
@@ -85,7 +124,12 @@ export function CustodianUI({
               styles={styles}
             />
           ))}
-          {pendingProposals.length === 0 && (
+          {isRequestsLoading && (
+            <View style={{ padding: 24, alignItems: 'center' }}>
+              <Text style={{ fontFamily: fonts.sans, color: colors.body }}>Syncing on-chain requests...</Text>
+            </View>
+          )}
+          {!isRequestsLoading && pendingProposals.length === 0 && (
             <View style={{ paddingHorizontal: 18 }}>
               <Card pad={20}>
                 <Text style={{ textAlign: 'center', color: colors.body, fontFamily: fonts.sans, fontSize: 13.5 }}>

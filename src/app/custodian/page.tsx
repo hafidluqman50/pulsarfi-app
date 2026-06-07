@@ -1,56 +1,111 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useCallback, useState } from 'react';
 import { CustodianUI } from './ui';
-import { useStocks, useReserves } from '@/http/hooks/stocks';
+import { useCustodianRequests, useCustodianMembers, useCustodianStats, useApproveMint, useApproveRedeem, useExecuteMint, useExecuteRedeem } from '@/http/hooks/custodian';
+import { useAccount } from 'wagmi';
+import { toast } from 'sonner-native';
+import { formatUnits } from 'viem';
 
-const CUSTODIANS_LIST = [
-  { id: "c1", name: "You", short: "ME", you: true },
-  { id: "c2", name: "Mandiri Sekuritas", short: "MS" },
-  { id: "c3", name: "BNI Custody", short: "BN" },
-  { id: "c4", name: "KSEI Nominee", short: "KS" },
-  { id: "c5", name: "Sinarmas AM", short: "SM" },
-];
 const SIGNATURE_THRESHOLD = 3;
 
-type Proposal = {
-  id: string;
-  type: string;
-  ticker: string;
-  amount: number;
-  note: string;
-  signed: Record<string, boolean>;
-  status: string;
-};
-
-function generateSeedProposals(): Proposal[] {
-  return [
-    { id: "p1", type: "mint", ticker: "pBBRI", amount: 50000, note: "Seed liquidity — Q2 inflow", signed: { c2: true, c3: true }, status: "pending" },
-    { id: "p2", type: "redeem", ticker: "pUNVR", amount: 18000, note: "Redemption gate · KYC cleared", signed: { c4: true }, status: "pending" },
-    { id: "p3", type: "mint", ticker: "pGOTO", amount: 120000, note: "Deepen GOTO pool", signed: { c2: true, c3: true, c5: true }, status: "executed" },
-  ];
-}
-
 export default function CustodianPage() {
-  const [proposals, setProposals] = useState(generateSeedProposals);
-  const stocksQuery = useStocks();
-  const reservesQuery = useReserves();
+  const { address } = useAccount();
+  const requestsQuery = useCustodianRequests();
+  const membersQuery = useCustodianMembers();
+  const statsQuery = useCustodianStats();
 
-  const totalReserveValue = useMemo(() => {
-    if (!reservesQuery.data || !stocksQuery.data) return 0;
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([
+      requestsQuery.refetch(),
+      membersQuery.refetch(),
+      statsQuery.refetch(),
+    ]);
+    setRefreshing(false);
+  }, [requestsQuery, membersQuery, statsQuery]);
+
+  const approveMint = useApproveMint();
+  const approveRedeem = useApproveRedeem();
+  const executeMint = useExecuteMint();
+  const executeRedeem = useExecuteRedeem();
+
+  const totalReserveValue = statsQuery.data ? Number(statsQuery.data.assets_under_custody_idr) : 0;
+
+  const custodiansList = useMemo(() => {
+    if (!membersQuery.data) return [];
     
-    return stocksQuery.data.reduce((sum, token) => {
-      const reserve = reservesQuery.data.find(r => r.stock.ticker === token.ticker);
-      const supply = reserve ? Number(reserve.on_chain_supply) / 1e18 : 0;
-      return sum + (supply * token.price);
-    }, 0);
-  }, [stocksQuery.data, reservesQuery.data]);
-
-  const handleSignProposal = (proposalId: string, shouldExecute: boolean) => {
-    setProposals(previousProposals => previousProposals.map(proposal => {
-      if (proposal.id !== proposalId) return proposal;
-      if (shouldExecute) return { ...proposal, status: "executed" };
-      const updatedSignedMap = { ...proposal.signed, c1: true };
-      return { ...proposal, signed: updatedSignedMap };
+    return membersQuery.data.map(member => ({
+      id: `c${member.id}`,
+      name: member.wallet_address.toLowerCase() === address?.toLowerCase() ? "You" : member.name,
+      short: member.wallet_address.toLowerCase() === address?.toLowerCase() 
+        ? "ME" 
+        : member.name.split(' ').length > 1 
+          ? (member.name.split(' ')[0][0] + member.name.split(' ')[1][0]).toUpperCase()
+          : member.name.substring(0, 2).toUpperCase(),
+      you: member.wallet_address.toLowerCase() === address?.toLowerCase(),
+      walletAddress: member.wallet_address.toLowerCase(),
     }));
+  }, [membersQuery.data, address]);
+
+  const proposals = useMemo(() => {
+    if (!requestsQuery.data?.items) return [];
+
+    return requestsQuery.data.items.map(req => {
+      const signed: Record<string, boolean> = {};
+      
+      req.attestors?.forEach(att => {
+        if (att.type === 'approve') {
+          const member = custodiansList.find(m => m.walletAddress === att.wallet_address.toLowerCase());
+          if (member) {
+            signed[member.id] = true;
+          }
+        }
+      });
+
+      return {
+        id: req.on_chain_id.toString(),
+        type: req.kind,
+        ticker: req.ticker,
+        amount: Number(formatUnits(BigInt(req.token_amount), 18)),
+        note: `${req.source === 'retail' ? 'Retail' : 'Institutional'} request`,
+        signed,
+        status: req.status === 'executed' ? 'executed' : 'pending',
+        rawRequest: req,
+      };
+    });
+  }, [requestsQuery.data, custodiansList]);
+
+  const handleSignProposal = async (proposalId: string, shouldExecute: boolean) => {
+    const proposal = proposals.find(p => p.id === proposalId);
+    if (!proposal) return;
+
+    try {
+      if (shouldExecute) {
+        if (proposal.type === 'mint') {
+          toast.loading("Executing Mint...");
+          await executeMint.mutateAsync(BigInt(proposalId));
+          toast.success("Mint Executed!");
+        } else {
+          toast.loading("Executing Redeem...");
+          await executeRedeem.mutateAsync(BigInt(proposalId));
+          toast.success("Redeem Executed!");
+        }
+      } else {
+        if (proposal.type === 'mint') {
+          toast.loading("Approving Mint...");
+          await approveMint.mutateAsync(BigInt(proposalId));
+          toast.success("Mint Approved!");
+        } else {
+          toast.loading("Approving Redeem...");
+          await approveRedeem.mutateAsync(BigInt(proposalId));
+          toast.success("Redeem Approved!");
+        }
+      }
+    } catch (e: any) {
+      toast.error(shouldExecute ? "Execution Failed" : "Approval Failed", {
+        description: e.message || "Something went wrong",
+      });
+    }
   };
 
   const pendingProposals = proposals.filter(proposal => proposal.status === "pending");
@@ -59,11 +114,15 @@ export default function CustodianPage() {
   return (
     <CustodianUI 
       reserveValue={totalReserveValue}
-      custodiansList={CUSTODIANS_LIST}
+      custodiansList={custodiansList}
       signatureThreshold={SIGNATURE_THRESHOLD}
       pendingProposals={pendingProposals}
       executedProposals={executedProposals}
       onSignProposal={handleSignProposal}
+      isMembersLoading={membersQuery.isLoading}
+      isRequestsLoading={requestsQuery.isLoading}
+      refreshing={refreshing}
+      onRefresh={onRefresh}
     />
   );
 }

@@ -48,7 +48,7 @@ export function BottomNav({ state, descriptors, navigation, role }: BottomTabBar
 
           return (
             <Pressable key={item.id} onPressIn={onPressTab} style={{ flex: 1, alignItems: 'center', gap: 3, paddingVertical: 5 }}>
-              <View style={{ width: 44, height: 26, alignItems: 'center', justifyContent: 'center', borderRadius: 99, backgroundColor: active ? colors.merahSoft : 'transparent' }}>
+              <View style={{ width: 44, height: 26, alignItems: 'center', justifyContent: 'center', borderRadius: 20, overflow: 'hidden', backgroundColor: active ? colors.merahSoft : 'transparent' }}>
                 <Icon name={item.icon} size={20} color={active ? colors.merah : colors.body} stroke={active ? 2 : 1.6} />
               </View>
               <Text style={{ fontFamily: active ? fonts.sansSemi : fonts.sansMed, fontSize: 10.5, color: active ? colors.merah : colors.body }}>{item.label}</Text>
