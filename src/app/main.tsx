@@ -96,7 +96,11 @@ export default function AppContent() {
 						description: "Session restored securely.",
 					});
 				},
-				onError: async () => {
+				onError: async (err) => {
+					console.error("[auth] SIWE verify failed:", err);
+					toast.error("Sign-in failed", {
+						description: err instanceof Error ? err.message : String(err),
+					});
 					await disconnect();
 					setWallet(null);
 				},
@@ -141,6 +145,7 @@ export default function AppContent() {
 			<SplashFrame isReady={isReady}>
 				<OnboardingScreen
 					mode={forceIntro || !onboarded ? "intro" : "connect"}
+					isSiweLoading={siweSession.isPending}
 					onSkip={() => {
 						markOnboarded();
 						setForceIntro(false);

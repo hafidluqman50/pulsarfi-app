@@ -248,11 +248,13 @@ export function WalletSheet({
 export function OnboardingUI({
 	wallets,
 	connectingWalletId,
+	isSiweLoading,
 	onConnectWallet,
 	onSkip,
 }: {
 	wallets: WalletOption[];
 	connectingWalletId: string | null;
+	isSiweLoading?: boolean;
 	onConnectWallet: (wallet: WalletOption, done?: () => void) => void;
 	onSkip?: () => void;
 }) {
@@ -264,6 +266,7 @@ export function OnboardingUI({
 	const [carouselSize, setCarouselSize] = useState({ width: 0, height: 0 });
 	const carouselRef = useRef<ICarouselInstance>(null);
 	const last = step === INTRO.length - 1;
+	const isBusy = isSiweLoading || !!connectingWalletId;
 
 	const goToStep = (index: number) => {
 		const next = Math.max(0, Math.min(INTRO.length - 1, index));
@@ -327,17 +330,26 @@ export function OnboardingUI({
 					))}
 				</View>
 				<TouchableOpacity
-					onPressIn={() => (last ? setSheetVisible(true) : goToStep(step + 1))}
+					onPressIn={() => (!isBusy && last ? setSheetVisible(true) : goToStep(step + 1))}
 					activeOpacity={0.86}
-					style={styles.connectButton}
+					disabled={isBusy}
+					style={[styles.connectButton, { opacity: isBusy ? 0.7 : 1 }]}
 				>
-					<Icon
-						name={last ? "wallet" : "chevron-right"}
-						size={18}
-						color="#fff"
-					/>
+					{isSiweLoading ? (
+						<ActivityIndicator color="#fff" size="small" />
+					) : (
+						<Icon
+							name={last ? "wallet" : "chevron-right"}
+							size={18}
+							color="#fff"
+						/>
+					)}
 					<Text style={styles.connectButtonText}>
-						{last ? "Connect wallet" : "Continue"}
+						{isSiweLoading
+							? "Verifying..."
+							: last
+								? "Connect wallet"
+								: "Continue"}
 					</Text>
 				</TouchableOpacity>
 				<View style={styles.liveBadge}>
@@ -362,12 +374,14 @@ export function OnboardingUI({
 export function ConnectHomeUI({
 	wallets,
 	connectingWalletId,
+	isSiweLoading,
 	lastWalletName,
 	onConnectWallet,
 	onShowIntro,
 }: {
 	wallets: WalletOption[];
 	connectingWalletId: string | null;
+	isSiweLoading?: boolean;
 	lastWalletName?: string | null;
 	onConnectWallet: (wallet: WalletOption, done?: () => void) => void;
 	onShowIntro?: () => void;
@@ -381,6 +395,7 @@ export function ConnectHomeUI({
 		: undefined;
 	const pulse = PSTOCKS.slice(0, 3);
 	const isConnectingKnown = !!known && connectingWalletId === known.id;
+	const isBusy = isSiweLoading || !!connectingWalletId;
 
 	const quickConnect = () => {
 		if (!known) {
@@ -457,23 +472,25 @@ export function ConnectHomeUI({
 				<TouchableOpacity
 					onPressIn={quickConnect}
 					activeOpacity={0.86}
-					disabled={!!connectingWalletId}
+					disabled={isBusy}
 					style={[
 						styles.connectButton,
-						{ opacity: connectingWalletId ? 0.55 : 1 },
+						{ opacity: isBusy ? 0.55 : 1 },
 					]}
 				>
-					{isConnectingKnown ? (
+					{isConnectingKnown || isSiweLoading ? (
 						<ActivityIndicator color="#fff" size="small" />
 					) : (
 						<Icon name="wallet" size={18} color="#fff" />
 					)}
 					<Text style={styles.connectButtonText}>
-						{isConnectingKnown
-							? "Connecting..."
-							: known
-								? `Continue with ${known.name}`
-								: "Connect wallet"}
+						{isSiweLoading
+							? "Verifying..."
+							: isConnectingKnown
+								? "Connecting..."
+								: known
+									? `Continue with ${known.name}`
+									: "Connect wallet"}
 					</Text>
 				</TouchableOpacity>
 				{known && (

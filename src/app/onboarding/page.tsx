@@ -19,11 +19,13 @@ export default function OnboardingPage({
 	onSkip,
 	lastWalletName,
 	onShowIntro,
+	isSiweLoading = false,
 }: {
 	mode?: "intro" | "connect";
 	onSkip?: () => void;
 	lastWalletName?: string | null;
 	onShowIntro?: () => void;
+	isSiweLoading?: boolean;
 }) {
 	const { open } = useAppKit();
 	const [connectingWalletId, setConnectingWalletId] = useState<string | null>(
@@ -58,6 +60,7 @@ export default function OnboardingPage({
 			<ConnectHomeUI
 				wallets={wallets}
 				connectingWalletId={connectingWalletId}
+				isSiweLoading={isSiweLoading}
 				lastWalletName={lastWalletName}
 				onConnectWallet={handleConnectWallet}
 				onShowIntro={onShowIntro}
@@ -69,6 +72,7 @@ export default function OnboardingPage({
 		<OnboardingUI
 			wallets={wallets}
 			connectingWalletId={connectingWalletId}
+			isSiweLoading={isSiweLoading}
 			onConnectWallet={handleConnectWallet}
 			onSkip={onSkip}
 		/>
